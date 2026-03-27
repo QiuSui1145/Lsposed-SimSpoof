@@ -1,0 +1,126 @@
+name: Build APK
+
+on:
+  # 手动触发
+  workflow_dispatch:
+    inputs:
+      spoofed_iccid:
+        description: 'Spoofed ICCID (19-20 digits)'
+        required: false
+        default: '89860123456789012345'
+      spoofed_imsi:
+        description: 'Spoofed IMSI (15 digits)'
+        required: false
+        default: '310260123456789'
+      spoofed_phone_number:
+        description: 'Spoofed Phone Number (International format)'
+        required: false
+        default: '+1234567890'
+  
+  # 推送代码时自动构建（可选）
+  push:
+    branches: [ main, master ]
+  
+  # 创建标签时自动构建并发布
+  release:
+    types: [ created ]
+
+# 设置权限以允许创建 Release
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up JDK 11
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+    
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: 34
+        build-tools: 34.0.0
+    
+    # 接受 Android SDK 许可证
+    - name: Accept Android SDK licenses
+      run: |
+        mkdir -p $ANDROID_HOME/licenses
+        echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $ANDROID_HOME/licenses/android-sdk-license
+        echo "84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-preview-license
+    
+    # 可选：修改源代码中的 SIM 卡信息（如果手动触发）
+    - name: Customize SIM values (if workflow_dispatch)
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        # 替换 ICCID
+        sed -i "s|private static final String SPOOFED_ICCID = \".*\"|private static final String SPOOFED_ICCID = \"${{ github.event.inputs.spoofed_iccid }}\"|" app/src/main/java/com/example/simspoof/SimSpoofModule.java
+        # 替换 IMSI
+        sed -i "s|private static final String SPOOFED_IMSI = \".*\"|private static final String SPOOFED_IMSI = \"${{ github.event.inputs.spoofed_imsi }}\"|" app/src/main/java/com/example/simspoof/SimSpoofModule.java
+        # 替换 Phone Number
+        sed -i "s|private static final String SPOOFED_PHONE_NUMBER = \".*\"|private static final String SPOOFED_PHONE_NUMBER = \"${{ github.event.inputs.spoofed_phone_number }}\"|" app/src/main/java/com/example/simspoof/SimSpoofModule.java
+    
+    # 给 gradlew 添加执行权限
+    - name: Make gradlew executable
+      run: chmod +x gradlew
+    
+    # 编译 Release APK
+    - name: Build Release APK
+      run: ./gradlew assembleRelease --no-daemon
+    
+    # 列出生成的文件（用于调试）
+    - name: List generated files
+      run: |
+        echo "=== APK files ==="
+        find app/build/outputs/apk -name "*.apk" -ls
+        echo "=== All outputs ==="
+        ls -la app/build/outputs/apk/
+    
+    # 上传 APK 作为工作流制品
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SimSpoof-Module
+        path: app/build/outputs/apk/release/*.apk
+        if-no-files-found: error
+    
+    # 如果是 Release 触发，创建 GitHub Release 并上传 APK
+    - name: Create Release and Upload APK
+      if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.ref_type == 'tag')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: app/build/outputs/apk/release/*.apk
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
+        body: |
+          ## SIM Spoof Module APK
+          
+          自动编译的 Release 版本 APK。
+          
+          ### 构建信息
+          - 构建时间: ${{ github.run_started_at }}
+          - 提交: ${{ github.sha }}
+          - 分支: ${{ github.ref_name }}
+          
+          ### 使用方法
+          1. 下载 APK 并安装到已 Root 设备
+          2. 在 LSPosed 中启用模块
+          3. 作用域选择 **系统框架 (android)**
+          4. 重启设备
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    # 如果是推送代码，输出 APK 摘要
+    - name: Output APK info (for push)
+      if: github.event_name == 'push'
+      run: |
+        echo "✅ Build completed!"
+        echo "📱 APK file generated:"
+        ls -lh app/build/outputs/apk/release/*.apk
