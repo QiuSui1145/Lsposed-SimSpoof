@@ -6,14 +6,13 @@ pluginManagement {
     }
 }
 dependencyResolutionManagement {
-    // 建议改为 FAIL_ON_PROJECT_REPOS，这样所有仓库都在这里统一管理，最稳妥
+    // 强制使用这里的配置，忽略 build.gradle 里的重复定义
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
-        // 关键：添加 Xposed 官方仓库地址
+        // 必须加上这个，否则找不到 Xposed 库
         maven { url 'https://api.xposed.info/' }
-        // 备用：部分新版 Xposed API 也会托管在 jitpack
         maven { url 'https://jitpack.io' }
     }
 }
