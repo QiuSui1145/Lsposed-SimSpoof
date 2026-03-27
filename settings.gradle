@@ -6,10 +6,15 @@ pluginManagement {
     }
 }
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    // 建议改为 FAIL_ON_PROJECT_REPOS，这样所有仓库都在这里统一管理，最稳妥
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
+        // 关键：添加 Xposed 官方仓库地址
+        maven { url 'https://api.xposed.info/' }
+        // 备用：部分新版 Xposed API 也会托管在 jitpack
+        maven { url 'https://jitpack.io' }
     }
 }
 rootProject.name = "SimSpoof"
