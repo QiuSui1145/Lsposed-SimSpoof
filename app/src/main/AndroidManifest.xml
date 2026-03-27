@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.simspoof">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
         android:label="SIM Spoof Module"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@android:mipmap/sym_def_app_icon"
+        android:roundIcon="@android:mipmap/sym_def_app_icon">
         
-        <!-- LSPosed Module Entry Point -->
         <meta-data
             android:name="xposedmodule"
             android:value="true" />
@@ -21,7 +20,6 @@
             android:resource="@array/xposed_scope" />
     </application>
 
-    <!-- Permissions for SIM access -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_PRIVILEGED_PHONE_STATE" />
 </manifest>
